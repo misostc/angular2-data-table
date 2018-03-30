@@ -229,7 +229,7 @@ var DataTableBodyCellComponent = /** @class */ (function () {
     function DataTableBodyCellComponent(element, cd) {
         this.cd = cd;
         this.activate = new core_1.EventEmitter();
-        this.treeActionClick = new core_1.EventEmitter();
+        this.treeAction = new core_1.EventEmitter();
         this.isFocused = false;
         this.onCheckboxChangeFn = this.onCheckboxChange.bind(this);
         this.activateFn = this.activate.emit.bind(this.activate);
@@ -360,6 +360,7 @@ var DataTableBodyCellComponent = /** @class */ (function () {
             else {
                 this._treeStatus = status;
             }
+            this.cellContext.treeStatus = this._treeStatus;
             this.checkValueUpdates();
             this.cd.markForCheck();
         },
@@ -516,7 +517,8 @@ var DataTableBodyCellComponent = /** @class */ (function () {
             rowHeight: this.rowHeight,
             column: this.column,
             value: this.value,
-            cellElement: this._element
+            cellElement: this._element,
+            treeStatus: 'collapsed'
         });
     };
     DataTableBodyCellComponent.prototype.calcSortDir = function (sorts) {
@@ -535,16 +537,15 @@ var DataTableBodyCellComponent = /** @class */ (function () {
         return html.replace(/<\/?[^>]+(>|$)/g, '');
     };
     DataTableBodyCellComponent.prototype.onTreeAction = function (row) {
-        if (this._treeStatus !== 'disabled') {
-            this.treeActionClick.emit();
-        }
+        this.treeAction.emit();
     };
     DataTableBodyCellComponent.prototype.calcLeftMargin = function (column, row) {
-        return column.isTreeColumn ? row.level * 50 : 0;
+        var levelIndent = column.treeLevelIndent != null ? column.treeLevelIndent : 50;
+        return column.isTreeColumn ? row.level * levelIndent : 0;
     };
     __decorate([
         core_1.Input(),
-        __metadata("design:type", Object)
+        __metadata("design:type", Function)
     ], DataTableBodyCellComponent.prototype, "displayCheck", void 0);
     __decorate([
         core_1.Input(),
@@ -596,9 +597,9 @@ var DataTableBodyCellComponent = /** @class */ (function () {
         __metadata("design:type", core_1.EventEmitter)
     ], DataTableBodyCellComponent.prototype, "activate", void 0);
     __decorate([
-        core_1.Output('treeAction'),
+        core_1.Output(),
         __metadata("design:type", core_1.EventEmitter)
-    ], DataTableBodyCellComponent.prototype, "treeActionClick", void 0);
+    ], DataTableBodyCellComponent.prototype, "treeAction", void 0);
     __decorate([
         core_1.ViewChild('cellTemplate', { read: core_1.ViewContainerRef }),
         __metadata("design:type", core_1.ViewContainerRef)
@@ -652,11 +653,7 @@ var DataTableBodyCellComponent = /** @class */ (function () {
         core_1.Component({
             selector: 'datatable-body-cell',
             changeDetection: core_1.ChangeDetectionStrategy.OnPush,
-            template: "\n    <div class=\"datatable-body-cell-label\"\n      [style.margin-left.px]=\"calcLeftMargin(column, row)\">\n      <label\n        *ngIf=\"column.checkboxable && (!displayCheck || displayCheck(row, column, value))\"\n        class=\"datatable-checkbox\">\n        <input\n          type=\"checkbox\"\n          [checked]=\"isSelected\"\n          (click)=\"onCheckboxChange($event)\"\n        />\n      </label>\n      <label class=\"clickable\"\n        *ngIf=\"column.isTreeColumn\"\n        (click)=\"onTreeAction()\">\n        <span *ngIf=\"_treeStatus==='loading' &&\n                !column.treeLoaderTemplate\">\n          <i class=\"icon datatable-icon-collapse\"></i>\n        </span>\n        <ng-template *ngIf=\"_treeStatus==='loading' &&\n                column.treeLoaderTemplate\"\n          [ngTemplateOutlet]=\"column.treeLoaderTemplate\">\n        </ng-template>\n\n        <span *ngIf=\"_treeStatus==='collapsed' &&\n                !column.treeExpanderTemplate\">\n          <i class=\"icon datatable-icon-up\"></i>\n        </span>\n        <ng-template *ngIf=\"_treeStatus==='collapsed' &&\n                column.treeExpanderTemplate\"\n          [ngTemplateOutlet]=\"column.treeExpanderTemplate\">\n        </ng-template>\n\n        <span *ngIf=\"_treeStatus==='expanded' &&\n                     !column.treeCollapserTemplate\">\n          <i class=\"icon datatable-icon-down\"></i>\n        </span>\n        <ng-template *ngIf=\"_treeStatus==='expanded' &&\n                            column.treeCollapserTemplate\"\n          [ngTemplateOutlet]=\"column.treeCollapserTemplate\">\n        </ng-template>\n\n        <span *ngIf=\"_treeStatus==='disabled' &&\n                     !column.treeDisableTemplate\" class=\"disabled\">\n          <i class=\"disabled icon datatable-icon-down\"></i>\n        </span>\n        <ng-template *ngIf=\"_treeStatus==='disabled' &&\n                           column.treeDisableTemplate\"\n          [ngTemplateOutlet]=\"column.treeDisableTemplate\">\n        </ng-template>\n      </label>\n\n      <span\n        *ngIf=\"!column.cellTemplate\"\n        [title]=\"sanitizedValue\"\n        [innerHTML]=\"value\">\n      </span>\n      <ng-template #cellTemplate\n        *ngIf=\"column.cellTemplate\"\n        [ngTemplateOutlet]=\"column.cellTemplate\"\n        [ngTemplateOutletContext]=\"cellContext\">\n      </ng-template>\n    </div>\n  ",
-            styles: [
-                '.clickable {cursor: pointer; }',
-                '.disabled {color: #d1d1d1; }'
-            ]
+            template: "\n    <div class=\"datatable-body-cell-label\"\n      [style.margin-left.px]=\"calcLeftMargin(column, row)\">\n      <label\n        *ngIf=\"column.checkboxable && (!displayCheck || displayCheck(row, column, value))\"\n        class=\"datatable-checkbox\">\n        <input\n          type=\"checkbox\"\n          [checked]=\"isSelected\"\n          (click)=\"onCheckboxChange($event)\"\n        />\n      </label>\n      <button\n        [disabled]=\"treeStatus==='disabled'\"\n        *ngIf=\"column.isTreeColumn\"\n        (click)=\"onTreeAction()\">\n        <span *ngIf=\"!column.treeIconTemplate\">\n          <i *ngIf=\"treeStatus==='loading'\"\n            class=\"icon datatable-icon-collapse\"></i>\n          <i *ngIf=\"treeStatus==='collapsed'\"\n            class=\"icon datatable-icon-up\"></i>\n          <i *ngIf=\"treeStatus==='expanded' ||\n                    treeStatus==='disabled'\"\n            class=\"icon datatable-icon-down\"></i>\n        </span>\n        <ng-template *ngIf=\"column.treeIconTemplate\"\n          [ngTemplateOutlet]=\"column.treeIconTemplate\"\n          [ngTemplateOutletContext]=\"cellContext\">\n        </ng-template>\n      </button>\n\n      <span\n        *ngIf=\"!column.cellTemplate\"\n        [title]=\"sanitizedValue\"\n        [innerHTML]=\"value\">\n      </span>\n      <ng-template #cellTemplate\n        *ngIf=\"column.cellTemplate\"\n        [ngTemplateOutlet]=\"column.cellTemplate\"\n        [ngTemplateOutletContext]=\"cellContext\">\n      </ng-template>\n    </div>\n  "
         }),
         __metadata("design:paramtypes", [core_1.ElementRef, core_1.ChangeDetectorRef])
     ], DataTableBodyCellComponent);
@@ -946,7 +943,6 @@ var DataTableBodyRowComponent = /** @class */ (function () {
         this.differs = differs;
         this.scrollbarHelper = scrollbarHelper;
         this.cd = cd;
-        // loading, expanded, collapsed
         this.treeStatus = 'collapsed';
         this.activate = new core_1.EventEmitter();
         this.treeAction = new core_1.EventEmitter();
@@ -2464,6 +2460,10 @@ var DataTableColumnDirective = /** @class */ (function () {
     ], DataTableColumnDirective.prototype, "isTreeColumn", void 0);
     __decorate([
         core_1.Input(),
+        __metadata("design:type", Number)
+    ], DataTableColumnDirective.prototype, "treeLevelIndent", void 0);
+    __decorate([
+        core_1.Input(),
         core_1.ContentChild(column_cell_directive_1.DataTableColumnCellDirective, { read: core_1.TemplateRef }),
         __metadata("design:type", core_1.TemplateRef)
     ], DataTableColumnDirective.prototype, "cellTemplate", void 0);
@@ -2474,24 +2474,9 @@ var DataTableColumnDirective = /** @class */ (function () {
     ], DataTableColumnDirective.prototype, "headerTemplate", void 0);
     __decorate([
         core_1.Input(),
-        core_1.ContentChild(tree_directive_1.DataTableColumnCellTreeExpander, { read: core_1.TemplateRef }),
+        core_1.ContentChild(tree_directive_1.DataTableColumnCellTreeIcon, { read: core_1.TemplateRef }),
         __metadata("design:type", core_1.TemplateRef)
-    ], DataTableColumnDirective.prototype, "treeExpanderTemplate", void 0);
-    __decorate([
-        core_1.Input(),
-        core_1.ContentChild(tree_directive_1.DataTableColumnCellTreeCollapser, { read: core_1.TemplateRef }),
-        __metadata("design:type", core_1.TemplateRef)
-    ], DataTableColumnDirective.prototype, "treeCollapserTemplate", void 0);
-    __decorate([
-        core_1.Input(),
-        core_1.ContentChild(tree_directive_1.DataTableColumnCellTreeLoader, { read: core_1.TemplateRef }),
-        __metadata("design:type", core_1.TemplateRef)
-    ], DataTableColumnDirective.prototype, "treeLoaderTemplate", void 0);
-    __decorate([
-        core_1.Input(),
-        core_1.ContentChild(tree_directive_1.DataTableColumnCellTreeDisable, { read: core_1.TemplateRef }),
-        __metadata("design:type", core_1.TemplateRef)
-    ], DataTableColumnDirective.prototype, "treeDisableTemplate", void 0);
+    ], DataTableColumnDirective.prototype, "treeIconTemplate", void 0);
     DataTableColumnDirective = __decorate([
         core_1.Directive({ selector: 'ngx-datatable-column' })
     ], DataTableColumnDirective);
@@ -2535,50 +2520,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var core_1 = __webpack_require__("@angular/core");
-var DataTableColumnCellTreeExpander = /** @class */ (function () {
-    function DataTableColumnCellTreeExpander(template) {
+var DataTableColumnCellTreeIcon = /** @class */ (function () {
+    function DataTableColumnCellTreeIcon(template) {
         this.template = template;
     }
-    DataTableColumnCellTreeExpander = __decorate([
-        core_1.Directive({ selector: '[ngx-datatable-cell-tree-expander]' }),
+    DataTableColumnCellTreeIcon = __decorate([
+        core_1.Directive({ selector: '[ngx-datatable-tree-icon]' }),
         __metadata("design:paramtypes", [core_1.TemplateRef])
-    ], DataTableColumnCellTreeExpander);
-    return DataTableColumnCellTreeExpander;
+    ], DataTableColumnCellTreeIcon);
+    return DataTableColumnCellTreeIcon;
 }());
-exports.DataTableColumnCellTreeExpander = DataTableColumnCellTreeExpander;
-var DataTableColumnCellTreeCollapser = /** @class */ (function () {
-    function DataTableColumnCellTreeCollapser(template) {
-        this.template = template;
-    }
-    DataTableColumnCellTreeCollapser = __decorate([
-        core_1.Directive({ selector: '[ngx-datatable-cell-tree-collapser]' }),
-        __metadata("design:paramtypes", [core_1.TemplateRef])
-    ], DataTableColumnCellTreeCollapser);
-    return DataTableColumnCellTreeCollapser;
-}());
-exports.DataTableColumnCellTreeCollapser = DataTableColumnCellTreeCollapser;
-var DataTableColumnCellTreeLoader = /** @class */ (function () {
-    function DataTableColumnCellTreeLoader(template) {
-        this.template = template;
-    }
-    DataTableColumnCellTreeLoader = __decorate([
-        core_1.Directive({ selector: '[ngx-datatable-cell-tree-loader]' }),
-        __metadata("design:paramtypes", [core_1.TemplateRef])
-    ], DataTableColumnCellTreeLoader);
-    return DataTableColumnCellTreeLoader;
-}());
-exports.DataTableColumnCellTreeLoader = DataTableColumnCellTreeLoader;
-var DataTableColumnCellTreeDisable = /** @class */ (function () {
-    function DataTableColumnCellTreeDisable(template) {
-        this.template = template;
-    }
-    DataTableColumnCellTreeDisable = __decorate([
-        core_1.Directive({ selector: '[ngx-datatable-cell-tree-disabled]' }),
-        __metadata("design:paramtypes", [core_1.TemplateRef])
-    ], DataTableColumnCellTreeDisable);
-    return DataTableColumnCellTreeDisable;
-}());
-exports.DataTableColumnCellTreeDisable = DataTableColumnCellTreeDisable;
+exports.DataTableColumnCellTreeIcon = DataTableColumnCellTreeIcon;
 
 
 /***/ }),
@@ -2818,7 +2770,7 @@ var DatatableComponent = /** @class */ (function () {
             }
             // auto sort on new updates
             if (!this.externalSorting) {
-                this._internalRows = utils_1.sortRows(this._internalRows, this._internalColumns, this.sorts);
+                this.sortInternalRows();
             }
             // auto group by parent on new update
             this._internalRows = utils_1.groupRowsByParents(this._internalRows, this.treeFromRelation, this.treeToRelation);
@@ -3084,7 +3036,7 @@ var DatatableComponent = /** @class */ (function () {
     DatatableComponent.prototype.ngAfterViewInit = function () {
         var _this = this;
         if (!this.externalSorting) {
-            this._internalRows = utils_1.sortRows(this._internalRows, this._internalColumns, this.sorts);
+            this.sortInternalRows();
         }
         // this has to be done to prevent the change detection
         // tree from freaking out because we are readjusting
@@ -3124,6 +3076,7 @@ var DatatableComponent = /** @class */ (function () {
                 this._internalColumns = utils_1.translateTemplates(arr);
                 utils_1.setColumnDefaults(this._internalColumns);
                 this.recalculateColumns();
+                this.sortInternalRows();
                 this.cd.markForCheck();
             }
         }
@@ -3160,7 +3113,7 @@ var DatatableComponent = /** @class */ (function () {
     DatatableComponent.prototype.ngDoCheck = function () {
         if (this.rowDiffer.diff(this.rows)) {
             if (!this.externalSorting) {
-                this._internalRows = utils_1.sortRows(this._internalRows, this._internalColumns, this.sorts);
+                this.sortInternalRows();
             }
             else {
                 this._internalRows = this.rows.slice();
@@ -3313,6 +3266,9 @@ var DatatableComponent = /** @class */ (function () {
             if (this.groupedRows) {
                 return this.groupedRows.length;
             }
+            else if (this.treeFromRelation != null && this.treeToRelation != null) {
+                return this._internalRows.length;
+            }
             else {
                 return val.length;
             }
@@ -3390,16 +3346,15 @@ var DatatableComponent = /** @class */ (function () {
                 selected: this.selected
             });
         }
-        var sorts = event.sorts;
+        this.sorts = event.sorts;
         // this could be optimized better since it will resort
         // the rows again on the 'push' detection...
         if (this.externalSorting === false) {
             // don't use normal setter so we don't resort
-            this._internalRows = utils_1.sortRows(this._internalRows, this._internalColumns, sorts);
+            this.sortInternalRows();
         }
         // auto group by parent on new update
         this._internalRows = utils_1.groupRowsByParents(this._internalRows, this.treeFromRelation, this.treeToRelation);
-        this.sorts = sorts;
         // Always go to first page when sorting to see the newly sorted data
         this.offset = 0;
         this.bodyComponent.updateOffsetY(this.offset);
@@ -3443,7 +3398,7 @@ var DatatableComponent = /** @class */ (function () {
         this.select.emit(event);
     };
     /**
-     * A row was expanded ot collapsed for tree
+     * A row was expanded or collapsed for tree
      */
     DatatableComponent.prototype.onTreeAction = function (event) {
         var _this = this;
@@ -3453,6 +3408,9 @@ var DatatableComponent = /** @class */ (function () {
             return r[_this.treeToRelation] === event.row[_this.treeToRelation];
         });
         this.treeAction.emit({ row: row, rowIndex: rowIndex });
+    };
+    DatatableComponent.prototype.sortInternalRows = function () {
+        this._internalRows = utils_1.sortRows(this._internalRows, this._internalColumns, this.sorts);
     };
     __decorate([
         core_1.Input(),
@@ -4911,10 +4869,7 @@ var NgxDatatableModule = /** @class */ (function () {
                 components_1.DataTableSelectionComponent,
                 components_1.DataTableColumnHeaderDirective,
                 components_1.DataTableColumnCellDirective,
-                components_1.DataTableColumnCellTreeExpander,
-                components_1.DataTableColumnCellTreeCollapser,
-                components_1.DataTableColumnCellTreeLoader,
-                components_1.DataTableColumnCellTreeDisable,
+                components_1.DataTableColumnCellTreeIcon,
                 components_1.DatatableFooterDirective,
                 components_1.DatatableGroupHeaderTemplateDirective
             ],
@@ -4926,10 +4881,7 @@ var NgxDatatableModule = /** @class */ (function () {
                 components_1.DataTableColumnDirective,
                 components_1.DataTableColumnHeaderDirective,
                 components_1.DataTableColumnCellDirective,
-                components_1.DataTableColumnCellTreeExpander,
-                components_1.DataTableColumnCellTreeCollapser,
-                components_1.DataTableColumnCellTreeLoader,
-                components_1.DataTableColumnCellTreeDisable,
+                components_1.DataTableColumnCellTreeIcon,
                 components_1.DataTableFooterTemplateDirective,
                 components_1.DatatableFooterDirective,
                 components_1.DataTablePagerComponent,
