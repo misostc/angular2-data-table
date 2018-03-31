@@ -28,7 +28,7 @@ export type TreeStatus = 'collapsed' | 'expanded' | 'loading' | 'disabled';
         />
       </label>
       <button
-        class="datable-tree-button"
+        class="datatable-tree-button"
         [disabled]="treeStatus==='disabled'"
         *ngIf="column.isTreeColumn"
         (click)="onTreeAction()">
